@@ -30,20 +30,43 @@ Use `--deep` only when you want a more aggressive reset.
 
 ## Installation
 
-### 1. Clone the repository
+### Homebrew (recommended)
+
+Add the tap and install with [Homebrew](https://brew.sh/):
+
+```sh
+brew tap jamie-brannan/swiftly-clean
+brew install swiftly-clean
+```
+
+To upgrade to a newer version later:
+
+```sh
+brew upgrade swiftly-clean
+```
+
+To uninstall:
+
+```sh
+brew uninstall swiftly-clean
+```
+
+### Manual
+
+#### 1. Clone the repository
 
 ```sh
 git clone https://github.com/jamie-brannan/swiftly-clean.git
 cd swiftly-clean
 ```
 
-### 2. Make the script executable
+#### 2. Make the script executable
 
 ```sh
 chmod +x swiftly-clean.sh
 ```
 
-### 3. Move it somewhere on your PATH
+#### 3. Move it somewhere on your PATH
 
 To make the command available from anywhere, move it to a directory on your shell `PATH` and rename it to drop the `.sh` extension:
 
@@ -151,6 +174,14 @@ Deleting SwiftPM caches means package dependencies may need to be fetched and re
 Deleting SwiftPM security fingerprints may cause SwiftPM or Xcode to ask you to trust package fingerprints again. That is expected.
 
 ## Uninstall
+
+### Homebrew
+
+```sh
+brew uninstall swiftly-clean
+```
+
+### Manual
 
 Remove the script from wherever you installed it.
 
