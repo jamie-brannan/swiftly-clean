@@ -57,6 +57,37 @@ for arg in "$@"; do
     esac
 done
 
+# MARK: - Safety guard
+
+# Refuse to run if $HOME is empty or resolves to root, which would make our
+# Library-relative paths catastrophically broad.
+safe_rm_rf() {
+    local target="$1"
+
+    # Must be non-empty
+    if [[ -z "$target" ]]; then
+        echo -e "${RED}✗ Refusing to delete: path is empty.${RESET}"
+        exit 1
+    fi
+
+    # Must not be / or $HOME
+    local real_target
+    real_target="$(cd "$target" 2>/dev/null && pwd -P || true)"
+    if [[ "$real_target" == "/" || "$real_target" == "$HOME" ]]; then
+        echo -e "${RED}✗ Refusing to delete: path resolves to ${real_target}.${RESET}"
+        exit 1
+    fi
+
+    # Must live under $HOME/Library
+    local home_library="$HOME/Library"
+    if [[ "$target" != "$home_library"* && "$target" != "$PWD/.build" ]]; then
+        echo -e "${RED}✗ Refusing to delete: path is outside expected locations (${target}).${RESET}"
+        exit 1
+    fi
+
+    rm -rf "$target"
+}
+
 echo ""
 echo -e "${BOLD}${BLUE}🧹 swiftly-clean${RESET}"
 echo -e "${DIM}Deep-cleans Xcode and SwiftPM build state.${RESET}"
@@ -86,21 +117,37 @@ if ! $FORCE; then
     }
 fi
 
+# MARK: - Xcode check
+
 if pgrep -x "Xcode" > /dev/null; then
     echo -e "${YELLOW}⚠ Xcode is currently running.${RESET}"
 
+    quit_xcode=n
     if ! $FORCE; then
         read -r -p "$(echo -e "${BOLD}Quit Xcode first?${RESET} [y/N] ")" quit_xcode
-
-        if [[ "$quit_xcode" =~ ^[Yy]$ ]]; then
-            osascript -e 'tell application "Xcode" to quit'
-            echo -e "  ${GREEN}✓${RESET} Asked Xcode to quit"
-        else
-            echo -e "  ${YELLOW}⚠${RESET} Xcode is still running"
-        fi
     else
+        quit_xcode=y
+    fi
+
+    if [[ "$quit_xcode" =~ ^[Yy]$ ]]; then
         osascript -e 'tell application "Xcode" to quit'
         echo -e "  ${GREEN}✓${RESET} Asked Xcode to quit"
+
+        # Wait for Xcode to fully exit (up to 30 seconds)
+        local_timeout=30
+        while pgrep -x "Xcode" > /dev/null; do
+            if (( local_timeout <= 0 )); then
+                echo -e "  ${RED}✗${RESET} Xcode did not quit within 30 seconds. Aborting."
+                exit 1
+            fi
+            sleep 1
+            (( local_timeout-- ))
+        done
+        echo -e "  ${GREEN}✓${RESET} Xcode has exited"
+    else
+        echo -e "  ${RED}✗${RESET} Xcode is still running. Aborting to avoid incomplete cleanup."
+        echo -e "  ${DIM}Quit Xcode first, then re-run swiftly-clean.${RESET}"
+        exit 1
     fi
 fi
 
@@ -109,14 +156,14 @@ echo -e "${BOLD}${CYAN}Cleaning...${RESET}"
 echo ""
 
 if [ -d "$DERIVED_DATA" ]; then
-    rm -rf "$DERIVED_DATA"
+    safe_rm_rf "$DERIVED_DATA"
     echo -e "  ${GREEN}✓${RESET} Cleared Xcode DerivedData"
 else
     echo -e "  ${DIM}• Xcode DerivedData not found${RESET}"
 fi
 
 if [ -d "$SPM_CACHE" ]; then
-    rm -rf "$SPM_CACHE"
+    safe_rm_rf "$SPM_CACHE"
     echo -e "  ${GREEN}✓${RESET} Cleared SwiftPM global cache"
 else
     echo -e "  ${DIM}• SwiftPM global cache not found${RESET}"
@@ -124,14 +171,14 @@ fi
 
 if $DEEP; then
     if [ -d "$SPM_USER_STATE" ]; then
-        rm -rf "$SPM_USER_STATE"
+        safe_rm_rf "$SPM_USER_STATE"
         echo -e "  ${GREEN}✓${RESET} Cleared SwiftPM user state ${BOLD}(full)${RESET}"
     else
         echo -e "  ${DIM}• SwiftPM user state not found${RESET}"
     fi
 else
     if [ -d "$SPM_FINGERPRINTS" ]; then
-        rm -rf "$SPM_FINGERPRINTS"
+        safe_rm_rf "$SPM_FINGERPRINTS"
         echo -e "  ${GREEN}✓${RESET} Cleared SwiftPM security fingerprints"
     else
         echo -e "  ${DIM}• SwiftPM security fingerprints not found${RESET}"
@@ -139,7 +186,7 @@ else
 fi
 
 if [ -d "$LOCAL_BUILD" ]; then
-    rm -rf "$LOCAL_BUILD"
+    safe_rm_rf "$LOCAL_BUILD"
     echo -e "  ${GREEN}✓${RESET} Cleared local .build"
 else
     echo -e "  ${DIM}• Local .build not found${RESET}"

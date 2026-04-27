@@ -24,51 +24,32 @@ With `--deep`, it additionally removes the full SwiftPM user state:
 
 ```sh
 ~/Library/org.swift.swiftpm
-````
+```
 
 Use `--deep` only when you want a more aggressive reset.
 
 ## Installation
 
-### 1. Create the script file
-
-Create a file named `swiftly-clean`:
+### 1. Clone the repository
 
 ```sh
-touch swiftly-clean
-```
-
-Open it in your editor and paste the script contents into the file.
-
-For example, using Xcode:
-
-```sh
-open -a Xcode swiftly-clean
-```
-
-Or using VS Code:
-
-```sh
-code swiftly-clean
+git clone https://github.com/jamie-brannan/swiftly-clean.git
+cd swiftly-clean
 ```
 
 ### 2. Make the script executable
 
-From the directory containing the file, run:
-
 ```sh
-chmod +x swiftly-clean
+chmod +x swiftly-clean.sh
 ```
 
 ### 3. Move it somewhere on your PATH
 
-To make the command available from anywhere, move it to a directory on your shell `PATH`.
-
-A common personal scripts directory is:
+To make the command available from anywhere, move it to a directory on your shell `PATH` and rename it to drop the `.sh` extension:
 
 ```sh
 mkdir -p "$HOME/bin"
-mv swiftly-clean "$HOME/bin/swiftly-clean"
+mv swiftly-clean.sh "$HOME/bin/swiftly-clean"
 ```
 
 Then make sure `~/bin` is on your `PATH`.
