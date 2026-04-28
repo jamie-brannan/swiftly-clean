@@ -4,6 +4,8 @@
 
 It is useful when Xcode or SwiftPM gets stuck after local package changes, dependency updates, renamed modules, stale package fingerprints, or mysterious build/indexing issues.
 
+It also supports **CocoaPods** projects: when a `Podfile` is detected in the current directory, `swiftly-clean` removes the local `Pods/` directory and the global CocoaPods cache, and optionally reinstalls pods after cleaning. Projects that manage Ruby tooling via **Bundler** (a `Gemfile` alongside the `Podfile`) are detected automatically, and `bundle exec pod install` is used instead of `pod install`.
+
 ## What it cleans
 
 By default, `swiftly-clean` removes:
@@ -20,11 +22,21 @@ By default, `swiftly-clean` removes:
 - the local `.build` folder in the current directory, if present  
   `./.build`
 
+When a `Podfile` is detected it also removes:
+
+- the local `Pods/` directory  
+  `./Pods`
+
+- the CocoaPods global cache  
+  `~/Library/Caches/CocoaPods`
+
 With `--deep`, it additionally removes the full SwiftPM user state:
 
 ```sh
 ~/Library/org.swift.swiftpm
 ```
+
+And when a `Podfile` is present, `--deep` also removes `Podfile.lock` so the next `pod install` resolves fresh versions.
 
 Use `--deep` only when you want a more aggressive reset.
 
@@ -112,6 +124,8 @@ This will ask for confirmation before deleting anything.
 swiftly-clean --force
 ```
 
+With `--force`, all confirmation prompts are skipped: Xcode is quit automatically if running, all paths are deleted without asking, and (when a CocoaPods project is detected) pods are reinstalled automatically.
+
 ### Deep clean
 
 ```sh
@@ -149,6 +163,16 @@ Deleting DerivedData means Xcode will need to rebuild project indexes and build 
 Deleting SwiftPM caches means package dependencies may need to be fetched and resolved again.
 
 Deleting SwiftPM security fingerprints may cause SwiftPM or Xcode to ask you to trust package fingerprints again. That is expected.
+
+### CocoaPods
+
+`swiftly-clean` detects CocoaPods projects by looking for a `Podfile` in the current directory. If found:
+
+- `Pods/` and the global CocoaPods cache (`~/Library/Caches/CocoaPods`) are removed as part of the normal clean.
+- `Podfile.lock` is only removed when `--deep` is passed. Removing it allows `pod install` to resolve fresh dependency versions; leave it in place if you want to restore the exact versions your team uses.
+- After cleaning, the script prompts you to run `pod install` (or `bundle exec pod install` when a `Gemfile` is present alongside the `Podfile`).
+- With `--force`, pod reinstall runs automatically without prompting.
+- If `pod` or `bundle` is not on your `PATH`, the script prints the command to run manually rather than failing.
 
 ## Uninstall
 

@@ -8,14 +8,22 @@
 #
 # Run from the root of the project/package you want to clean.
 #
+# --force  skips all confirmation prompts, quits Xcode automatically,
+#          and (when CocoaPods is detected) reinstalls pods without prompting.
+# --deep   additionally removes ~/Library/org.swift.swiftpm (full SwiftPM state)
+#          and Podfile.lock (if a Podfile is present).
+#
 # Normal clean removes:
 #   - all Xcode DerivedData (~/Library/Developer/Xcode/DerivedData)
 #   - SwiftPM global cache (~/Library/Caches/org.swift.swiftpm)
 #   - SwiftPM security fingerprints (~/Library/org.swift.swiftpm/security)
 #   - local .build for the current directory
+#   - local Pods/ directory (if a Podfile is present)
+#   - CocoaPods global cache (~/Library/Caches/CocoaPods)
 #
 # Deep clean additionally removes:
 #   - full SwiftPM user state at ~/Library/org.swift.swiftpm
+#   - Podfile.lock (if a Podfile is present)
 
 set -euo pipefail
 
@@ -37,6 +45,12 @@ SPM_CACHE="$HOME/Library/Caches/org.swift.swiftpm"
 SPM_FINGERPRINTS="$HOME/Library/org.swift.swiftpm/security"
 SPM_USER_STATE="$HOME/Library/org.swift.swiftpm"
 LOCAL_BUILD="$PWD/.build"
+
+PODS_DIR="$PWD/Pods"
+PODS_CACHE="$HOME/Library/Caches/CocoaPods"
+PODFILE="$PWD/Podfile"
+PODFILE_LOCK="$PWD/Podfile.lock"
+GEMFILE="$PWD/Gemfile"
 
 FORCE=false
 DEEP=false
@@ -78,9 +92,12 @@ safe_rm_rf() {
         exit 1
     fi
 
-    # Must live under $HOME/Library
+    # Must live under $HOME/Library or be a known local project path
     local home_library="$HOME/Library"
-    if [[ "$target" != "$home_library"* && "$target" != "$PWD/.build" ]]; then
+    if [[ "$target" != "$home_library"* && \
+          "$target" != "$PWD/.build" && \
+          "$target" != "$PWD/Pods" && \
+          "$target" != "$PWD/Podfile.lock" ]]; then
         echo -e "${RED}✗ Refusing to delete: path is outside expected locations (${target}).${RESET}"
         exit 1
     fi
@@ -92,6 +109,27 @@ echo ""
 echo -e "${BOLD}${BLUE}🧹 swiftly-clean${RESET}"
 echo -e "${DIM}Deep-cleans Xcode and SwiftPM build state.${RESET}"
 echo ""
+
+# MARK: - CocoaPods detection
+
+HAS_PODS=false
+USE_BUNDLER=false
+
+if [ -f "$PODFILE" ]; then
+    HAS_PODS=true
+    if [ -f "$GEMFILE" ]; then
+        USE_BUNDLER=true
+    fi
+fi
+
+if $HAS_PODS; then
+    if $USE_BUNDLER; then
+        echo -e "${DIM}CocoaPods project detected (Bundler present — will use \`bundle exec pod install\`).${RESET}"
+    else
+        echo -e "${DIM}CocoaPods project detected.${RESET}"
+    fi
+    echo ""
+fi
 
 echo -e "${BOLD}${YELLOW}This will remove:${RESET}"
 echo -e "  ${YELLOW}•${RESET} All Xcode DerivedData         ${DIM}($DERIVED_DATA)${RESET}"
@@ -105,6 +143,18 @@ fi
 
 if [ -d "$LOCAL_BUILD" ]; then
     echo -e "  ${YELLOW}•${RESET} Local .build                  ${DIM}($LOCAL_BUILD)${RESET}"
+fi
+
+if $HAS_PODS; then
+    if [ -d "$PODS_DIR" ]; then
+        echo -e "  ${YELLOW}•${RESET} CocoaPods Pods directory      ${DIM}($PODS_DIR)${RESET}"
+    fi
+    echo -e "  ${YELLOW}•${RESET} CocoaPods global cache        ${DIM}($PODS_CACHE)${RESET}"
+    if $DEEP; then
+        if [ -f "$PODFILE_LOCK" ]; then
+            echo -e "  ${RED}•${RESET} Podfile.lock ${BOLD}(deep)${RESET}          ${DIM}($PODFILE_LOCK)${RESET}"
+        fi
+    fi
 fi
 
 echo ""
@@ -192,7 +242,75 @@ else
     echo -e "  ${DIM}• Local .build not found${RESET}"
 fi
 
+# MARK: - CocoaPods cleanup
+
+if $HAS_PODS; then
+    if [ -d "$PODS_DIR" ]; then
+        safe_rm_rf "$PODS_DIR"
+        echo -e "  ${GREEN}✓${RESET} Cleared CocoaPods Pods directory"
+    else
+        echo -e "  ${DIM}• CocoaPods Pods directory not found${RESET}"
+    fi
+
+    if [ -d "$PODS_CACHE" ]; then
+        safe_rm_rf "$PODS_CACHE"
+        echo -e "  ${GREEN}✓${RESET} Cleared CocoaPods global cache"
+    else
+        echo -e "  ${DIM}• CocoaPods global cache not found${RESET}"
+    fi
+
+    if $DEEP; then
+        if [ -f "$PODFILE_LOCK" ]; then
+            safe_rm_rf "$PODFILE_LOCK"
+            echo -e "  ${GREEN}✓${RESET} Removed Podfile.lock ${BOLD}(deep)${RESET}"
+        else
+            echo -e "  ${DIM}• Podfile.lock not found${RESET}"
+        fi
+    fi
+fi
+
 echo ""
 echo -e "${BOLD}${GREEN}✅ Done.${RESET}"
-echo -e "${DIM}Re-open your .xcworkspace and let SwiftPM resolve.${RESET}"
+if $HAS_PODS; then
+    echo -e "${DIM}Run \`pod install\` (or \`bundle exec pod install\`) then re-open your .xcworkspace.${RESET}"
+else
+    echo -e "${DIM}Re-open your .xcworkspace and let SwiftPM resolve.${RESET}"
+fi
 echo ""
+
+# MARK: - CocoaPods reinstall prompt
+
+if $HAS_PODS; then
+    reinstall_pods=n
+    if ! $FORCE; then
+        if $USE_BUNDLER; then
+            read -r -p "$(echo -e "${BOLD}Run \`bundle exec pod install\` now?${RESET} [y/N] ")" reinstall_pods
+        else
+            read -r -p "$(echo -e "${BOLD}Run \`pod install\` now?${RESET} [y/N] ")" reinstall_pods
+        fi
+    else
+        reinstall_pods=y
+    fi
+
+    if [[ "$reinstall_pods" =~ ^[Yy]$ ]]; then
+        echo ""
+        if $USE_BUNDLER; then
+            if command -v bundle &> /dev/null; then
+                bundle exec pod install
+                echo ""
+                echo -e "  ${GREEN}✓${RESET} Pods reinstalled via Bundler"
+            else
+                echo -e "  ${RED}✗${RESET} 'bundle' command not found. Run manually: ${DIM}bundle exec pod install${RESET}"
+            fi
+        else
+            if command -v pod &> /dev/null; then
+                pod install
+                echo ""
+                echo -e "  ${GREEN}✓${RESET} Pods reinstalled"
+            else
+                echo -e "  ${RED}✗${RESET} 'pod' command not found. Run manually: ${DIM}pod install${RESET}"
+            fi
+        fi
+        echo ""
+    fi
+fi
