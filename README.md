@@ -28,6 +28,8 @@ With `--deep`, it additionally removes the full SwiftPM user state:
 
 Use `--deep` only when you want a more aggressive reset.
 
+With `--resolve`, it searches the current directory tree for `Package.resolved` files and offers to delete them interactively. This is useful in hybrid projects or workspaces where multiple `Package.resolved` files cause conflicts, especially when dependencies point to a `branch` rather than an `exact` version.
+
 ## Installation
 
 ### 1. Clone the repository
@@ -122,6 +124,20 @@ swiftly-clean --deep
 
 ```sh
 swiftly-clean --force --deep
+```
+
+### Search and destroy Package.resolved files
+
+```sh
+swiftly-clean --resolve
+```
+
+This scans the current directory tree for all `Package.resolved` files, lists them with their paths, and then asks whether to delete all of them, select individual ones to delete, or skip entirely.
+
+### Search and destroy Package.resolved files without confirmation
+
+```sh
+swiftly-clean --resolve --force
 ```
 
 ## Recommended workflow
