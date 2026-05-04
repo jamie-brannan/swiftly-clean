@@ -5,6 +5,8 @@
 #   swiftly-clean --force
 #   swiftly-clean --deep
 #   swiftly-clean --force --deep
+#   swiftly-clean --resolve
+#   swiftly-clean --resolve --force
 #
 # Run from the root of the project/package you want to clean.
 #
@@ -16,6 +18,10 @@
 #
 # Deep clean additionally removes:
 #   - full SwiftPM user state at ~/Library/org.swift.swiftpm
+#
+# Resolve clean (--resolve):
+#   - searches the current directory tree for Package.resolved files
+#   - lists them and offers to delete all, selected ones, or none
 
 set -euo pipefail
 
@@ -40,6 +46,7 @@ LOCAL_BUILD="$PWD/.build"
 
 FORCE=false
 DEEP=false
+RESOLVE_PACKAGES=false
 
 for arg in "$@"; do
     case "$arg" in
@@ -49,9 +56,12 @@ for arg in "$@"; do
         --deep)
             DEEP=true
             ;;
+        --resolve)
+            RESOLVE_PACKAGES=true
+            ;;
         *)
             echo -e "${RED}✗ Unknown option:${RESET} $arg"
-            echo -e "${DIM}Usage: swiftly-clean [--force] [--deep]${RESET}"
+            echo -e "${DIM}Usage: swiftly-clean [--force] [--deep] [--resolve]${RESET}"
             exit 1
             ;;
     esac
@@ -87,6 +97,98 @@ safe_rm_rf() {
 
     rm -rf "$target"
 }
+
+# Safe delete for a single Package.resolved file found under $PWD.
+safe_rm_resolved() {
+    local target="$1"
+
+    # Must be non-empty
+    if [[ -z "$target" ]]; then
+        echo -e "${RED}✗ Refusing to delete: path is empty.${RESET}"
+        exit 1
+    fi
+
+    # Must be named Package.resolved
+    if [[ "$(basename "$target")" != "Package.resolved" ]]; then
+        echo -e "${RED}✗ Refusing to delete: not a Package.resolved file (${target}).${RESET}"
+        exit 1
+    fi
+
+    # Must live under $PWD
+    local real_target real_pwd target_dir
+    target_dir="$(dirname "$target")"
+    if ! real_target="$(cd "$target_dir" 2>/dev/null && pwd -P)"; then
+        echo -e "${RED}✗ Refusing to delete: could not resolve path (${target}).${RESET}"
+        exit 1
+    fi
+    real_target="$real_target/$(basename "$target")"
+    real_pwd="$(cd "$PWD" && pwd -P)"
+    if [[ "$real_target" != "$real_pwd"/* ]]; then
+        echo -e "${RED}✗ Refusing to delete: path is outside current directory (${target}).${RESET}"
+        exit 1
+    fi
+
+    rm -f "$target"
+}
+
+# MARK: - Package.resolved search and destroy
+
+if $RESOLVE_PACKAGES; then
+    echo ""
+    echo -e "${BOLD}${BLUE}🧹 swiftly-clean${RESET}"
+    echo -e "${DIM}Searching for Package.resolved files under:${RESET} ${DIM}$PWD${RESET}"
+    echo ""
+
+    resolved_files=()
+    while IFS= read -r -d '' file; do
+        resolved_files+=("$file")
+    done < <(find "$PWD" -name "Package.resolved" -not -path "*/.git/*" -print0 2>/dev/null | sort -z)
+
+    if [ ${#resolved_files[@]} -eq 0 ]; then
+        echo -e "  ${DIM}• No Package.resolved files found${RESET}"
+        echo ""
+        exit 0
+    fi
+
+    echo -e "  Found ${BOLD}${#resolved_files[@]}${RESET} Package.resolved file(s):"
+    echo ""
+    for i in "${!resolved_files[@]}"; do
+        echo -e "  ${YELLOW}[$((i+1))]${RESET} ${DIM}${resolved_files[$i]}${RESET}"
+    done
+    echo ""
+
+    if $FORCE; then
+        resolve_action=a
+    else
+        read -r -p "$(echo -e "${BOLD}Delete all, select individually, or skip?${RESET} [a/i/N] ")" resolve_action
+    fi
+
+    if [[ "$resolve_action" =~ ^[Aa]$ ]]; then
+        echo ""
+        for file in "${resolved_files[@]}"; do
+            safe_rm_resolved "$file"
+            echo -e "  ${GREEN}✓${RESET} Deleted ${DIM}$file${RESET}"
+        done
+    elif [[ "$resolve_action" =~ ^[Ii]$ ]]; then
+        echo ""
+        for file in "${resolved_files[@]}"; do
+            read -r -p "$(echo -e "  Delete ${DIM}$file${RESET}? [y/N] ")" del_confirm
+            if [[ "$del_confirm" =~ ^[Yy]$ ]]; then
+                safe_rm_resolved "$file"
+                echo -e "  ${GREEN}✓${RESET} Deleted ${DIM}$file${RESET}"
+            else
+                echo -e "  ${DIM}  • Skipped${RESET}"
+            fi
+        done
+    else
+        echo -e "  ${YELLOW}Skipped.${RESET}"
+    fi
+
+    echo ""
+    echo -e "${BOLD}${GREEN}✅ Done.${RESET}"
+    echo ""
+    exit 0
+fi
 
 echo ""
 echo -e "${BOLD}${BLUE}🧹 swiftly-clean${RESET}"
@@ -195,4 +297,24 @@ fi
 echo ""
 echo -e "${BOLD}${GREEN}✅ Done.${RESET}"
 echo -e "${DIM}Re-open your .xcworkspace and let SwiftPM resolve.${RESET}"
+
+# MARK: - Post-clean hint: branch-pinned packages
+
+branch_resolved_files=()
+while IFS= read -r -d '' file; do
+    if grep -q '"branch": "' "$file" 2>/dev/null; then
+        branch_resolved_files+=("$file")
+    fi
+done < <(find "$PWD" -name "Package.resolved" -not -path "*/.git/*" -print0 2>/dev/null)
+
+if [ ${#branch_resolved_files[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${YELLOW}⚠ Branch-pinned packages detected in Package.resolved:${RESET}"
+    for file in "${branch_resolved_files[@]}"; do
+        echo -e "  ${DIM}$file${RESET}"
+    done
+    echo -e "  ${DIM}If build issues persist, stale pins may be the cause.${RESET}"
+    echo -e "  ${DIM}Run:${RESET} ${BOLD}swiftly-clean --resolve${RESET}"
+fi
+
 echo ""
