@@ -297,4 +297,24 @@ fi
 echo ""
 echo -e "${BOLD}${GREEN}✅ Done.${RESET}"
 echo -e "${DIM}Re-open your .xcworkspace and let SwiftPM resolve.${RESET}"
+
+# MARK: - Post-clean hint: branch-pinned packages
+
+branch_resolved_files=()
+while IFS= read -r -d '' file; do
+    if grep -q '"branch": "' "$file" 2>/dev/null; then
+        branch_resolved_files+=("$file")
+    fi
+done < <(find "$PWD" -name "Package.resolved" -not -path "*/.git/*" -print0 2>/dev/null)
+
+if [ ${#branch_resolved_files[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${YELLOW}⚠ Branch-pinned packages detected in Package.resolved:${RESET}"
+    for file in "${branch_resolved_files[@]}"; do
+        echo -e "  ${DIM}$file${RESET}"
+    done
+    echo -e "  ${DIM}If build issues persist, stale pins may be the cause.${RESET}"
+    echo -e "  ${DIM}Run:${RESET} ${BOLD}swiftly-clean --resolve${RESET}"
+fi
+
 echo ""
