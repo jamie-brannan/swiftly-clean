@@ -7,6 +7,7 @@
 #   swiftly-clean --force --deep
 #   swiftly-clean --resolve
 #   swiftly-clean --resolve --force
+#   swiftly-clean --version
 #   swiftly-clean --help
 #   swiftly-clean -h
 #
@@ -46,6 +47,7 @@ SPM_FINGERPRINTS="$HOME/Library/org.swift.swiftpm/security"
 SPM_USER_STATE="$HOME/Library/org.swift.swiftpm"
 LOCAL_BUILD="$PWD/.build"
 
+VERSION="tbd"
 FORCE=false
 DEEP=false
 RESOLVE_PACKAGES=false
@@ -60,6 +62,7 @@ print_help() {
     printf '%s\n' "  swiftly-clean --force --deep"
     printf '%s\n' "  swiftly-clean --resolve"
     printf '%s\n' "  swiftly-clean --resolve --force"
+    printf '%s\n' "  swiftly-clean --version"
     printf '%s\n' "  swiftly-clean --help"
     printf '%s\n' "  swiftly-clean -h"
     printf '\n'
@@ -67,6 +70,7 @@ print_help() {
     printf '%s\n' "  --force      Skip confirmation prompts"
     printf '%s\n' "  --deep       Remove full SwiftPM user state instead of only security fingerprints"
     printf '%s\n' "  --resolve    Find Package.resolved files and offer to delete them"
+    printf '%s\n' "  --version    Print the current version"
     printf '%s\n' "  --help, -h   Show help"
 }
 
@@ -74,6 +78,10 @@ for arg in "$@"; do
     case "$arg" in
         --help|-h)
             print_help
+            exit 0
+            ;;
+        --version)
+            printf '%s\n' "swiftly-clean $VERSION"
             exit 0
             ;;
         --force)
@@ -87,7 +95,7 @@ for arg in "$@"; do
             ;;
         *)
             echo -e "${RED}✗ Unknown option:${RESET} $arg"
-            echo -e "${DIM}Usage: swiftly-clean [--force] [--deep] [--resolve] [--help]${RESET}"
+            echo -e "${DIM}Usage: swiftly-clean [--force] [--deep] [--resolve] [--version] [--help]${RESET}"
             exit 1
             ;;
     esac

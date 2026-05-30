@@ -114,6 +114,12 @@ This will ask for confirmation before deleting anything.
 swiftly-clean --help
 ```
 
+### Show version
+
+```sh
+swiftly-clean --version
+```
+
 ### Skip confirmation
 
 ```sh
