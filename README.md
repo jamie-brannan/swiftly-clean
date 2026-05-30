@@ -93,10 +93,10 @@ You should see something like:
 You can also run:
 
 ```sh
-swiftly-clean --force
+swiftly-clean --help
 ```
 
-to test that the command is found and executes.
+to test that the command is found without deleting anything.
 
 ## Usage
 
@@ -107,6 +107,12 @@ swiftly-clean
 ```
 
 This will ask for confirmation before deleting anything.
+
+### Show help
+
+```sh
+swiftly-clean --help
+```
 
 ### Skip confirmation
 

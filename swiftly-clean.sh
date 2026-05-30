@@ -7,6 +7,8 @@
 #   swiftly-clean --force --deep
 #   swiftly-clean --resolve
 #   swiftly-clean --resolve --force
+#   swiftly-clean --help
+#   swiftly-clean -h
 #
 # Run from the root of the project/package you want to clean.
 #
@@ -48,8 +50,32 @@ FORCE=false
 DEEP=false
 RESOLVE_PACKAGES=false
 
+print_help() {
+    printf '%s\n' "swiftly-clean - deep-cleans Xcode/SPM build state"
+    printf '\n'
+    printf '%s\n' "Usage:"
+    printf '%s\n' "  swiftly-clean"
+    printf '%s\n' "  swiftly-clean --force"
+    printf '%s\n' "  swiftly-clean --deep"
+    printf '%s\n' "  swiftly-clean --force --deep"
+    printf '%s\n' "  swiftly-clean --resolve"
+    printf '%s\n' "  swiftly-clean --resolve --force"
+    printf '%s\n' "  swiftly-clean --help"
+    printf '%s\n' "  swiftly-clean -h"
+    printf '\n'
+    printf '%s\n' "Options:"
+    printf '%s\n' "  --force      Skip confirmation prompts"
+    printf '%s\n' "  --deep       Remove full SwiftPM user state instead of only security fingerprints"
+    printf '%s\n' "  --resolve    Find Package.resolved files and offer to delete them"
+    printf '%s\n' "  --help, -h   Show help"
+}
+
 for arg in "$@"; do
     case "$arg" in
+        --help|-h)
+            print_help
+            exit 0
+            ;;
         --force)
             FORCE=true
             ;;
@@ -61,7 +87,7 @@ for arg in "$@"; do
             ;;
         *)
             echo -e "${RED}✗ Unknown option:${RESET} $arg"
-            echo -e "${DIM}Usage: swiftly-clean [--force] [--deep] [--resolve]${RESET}"
+            echo -e "${DIM}Usage: swiftly-clean [--force] [--deep] [--resolve] [--help]${RESET}"
             exit 1
             ;;
     esac
