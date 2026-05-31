@@ -1,0 +1,144 @@
+.Dd May 31, 2026
+.Dt SWIFTLY-CLEAN 1
+.Os
+.Sh NAME
+.Nm swiftly-clean
+.Nd deep-clean Xcode and Swift Package Manager build state
+.Sh SYNOPSIS
+.Nm
+.Op Fl -force
+.Op Fl -deep
+.Op Fl -dry-run
+.Nm
+.Fl -resolve
+.Op Fl -force
+.Op Fl -dry-run
+.Nm
+.Fl -version
+.Nm
+.Fl -help
+.Nm
+.Fl h
+.Sh DESCRIPTION
+.Nm
+removes common Xcode and Swift Package Manager build state from the current
+user account and, when present, the local
+.Pa .build
+directory in the current working directory.
+.Pp
+By default,
+.Nm
+removes Xcode DerivedData, the global SwiftPM cache, SwiftPM security
+fingerprints, and the local
+.Pa .build
+directory when it exists.
+.Pp
+With
+.Fl -deep ,
+.Nm
+removes the full SwiftPM user state instead of only SwiftPM security
+fingerprints.
+.Pp
+With
+.Fl -resolve ,
+.Nm
+searches the current directory tree for
+.Pa Package.resolved
+files and offers to delete them.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -force
+Skip confirmation prompts.
+.It Fl -deep
+Remove full SwiftPM user state instead of only security fingerprints.
+.It Fl -dry-run
+Show what would be removed without deleting anything.
+.It Fl -resolve
+Find
+.Pa Package.resolved
+files and offer to delete them.
+.It Fl -version
+Print the installed command's version.
+.It Fl -help , Fl h
+Show help.
+.El
+.Sh SAFETY
+.Nm
+prompts before deleting files unless
+.Fl -force
+is used.
+.Pp
+.Fl -dry-run
+prints the cleanup targets and exits without deleting anything, before
+confirmation prompts, Xcode checks, or delete calls.
+.Pp
+Deletion is guarded so cleanup targets must be expected paths under
+.Pa ~/Library
+or the local
+.Pa .build
+directory, and package resolution cleanup is guarded so only files named
+.Pa Package.resolved
+under the current working directory are eligible for deletion.
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa ~/Library/Developer/Xcode/DerivedData
+Xcode DerivedData.
+.It Pa ~/Library/Caches/org.swift.swiftpm
+SwiftPM global cache.
+.It Pa ~/Library/org.swift.swiftpm/security
+SwiftPM security fingerprints.
+.It Pa ~/Library/org.swift.swiftpm
+Full SwiftPM user state used by
+.Fl -deep .
+.It Pa ./.build
+Local SwiftPM build directory in the current working directory.
+.It Pa Package.resolved
+SwiftPM resolved package file searched by
+.Fl -resolve .
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Pp
+.Nm
+exits 0 when help, version, dry-run, skipped cleanup, or successful cleanup
+completes normally, and exits non-zero for unknown options or safety guard
+failures.
+.Sh EXAMPLES
+Show what the default cleanup would remove:
+.Bd -literal -offset indent
+swiftly-clean --dry-run
+.Ed
+.Pp
+Show what a deep cleanup would remove:
+.Bd -literal -offset indent
+swiftly-clean --deep --dry-run
+.Ed
+.Pp
+Run the default cleanup interactively:
+.Bd -literal -offset indent
+swiftly-clean
+.Ed
+.Pp
+Run a deep cleanup without confirmation prompts:
+.Bd -literal -offset indent
+swiftly-clean --force --deep
+.Ed
+.Pp
+Search for
+.Pa Package.resolved
+files and choose which ones to delete:
+.Bd -literal -offset indent
+swiftly-clean --resolve
+.Ed
+.Pp
+Print the installed command's version:
+.Bd -literal -offset indent
+swiftly-clean --version
+.Ed
+.Pp
+Show command help:
+.Bd -literal -offset indent
+swiftly-clean --help
+.Ed
+.Sh AUTHORS
+.An Jamie Brannan

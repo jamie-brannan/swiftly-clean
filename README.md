@@ -42,16 +42,16 @@ cd swiftly-clean
 ### 2. Make the script executable
 
 ```sh
-chmod +x swiftly-clean.sh
+chmod +x swiftly-clean
 ```
 
 ### 3. Move it somewhere on your PATH
 
-To make the command available from anywhere, move it to a directory on your shell `PATH` and rename it to drop the `.sh` extension:
+To make the command available from anywhere, copy it to a directory on your shell `PATH`:
 
 ```sh
 mkdir -p "$HOME/bin"
-mv swiftly-clean.sh "$HOME/bin/swiftly-clean"
+cp swiftly-clean "$HOME/bin/swiftly-clean"
 ```
 
 Then make sure `~/bin` is on your `PATH`.
@@ -164,6 +164,32 @@ This scans the current directory tree for all `Package.resolved` files, lists th
 
 ```sh
 swiftly-clean --resolve --force
+```
+
+## Manual page
+
+After installation through a package manager, the manual should be available with:
+
+```sh
+man swiftly-clean
+```
+
+The source manual page is included in this repository at:
+
+```sh
+man/swiftly-clean.1
+```
+
+To preview the repository copy before it is installed into your system man path, run:
+
+```sh
+man ./man/swiftly-clean.1
+```
+
+Future Homebrew packaging can install it with:
+
+```ruby
+man1.install "man/swiftly-clean.1"
 ```
 
 ## Recommended workflow
