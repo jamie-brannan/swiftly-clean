@@ -5,6 +5,8 @@
 #   swiftly-clean --force
 #   swiftly-clean --deep
 #   swiftly-clean --force --deep
+#   swiftly-clean --dry-run
+#   swiftly-clean --deep --dry-run
 #   swiftly-clean --resolve
 #   swiftly-clean --resolve --force
 #   swiftly-clean --version
@@ -50,6 +52,7 @@ LOCAL_BUILD="$PWD/.build"
 VERSION="tbd"
 FORCE=false
 DEEP=false
+DRY_RUN=false
 RESOLVE_PACKAGES=false
 
 print_help() {
@@ -60,6 +63,8 @@ print_help() {
     printf '%s\n' "  swiftly-clean --force"
     printf '%s\n' "  swiftly-clean --deep"
     printf '%s\n' "  swiftly-clean --force --deep"
+    printf '%s\n' "  swiftly-clean --dry-run"
+    printf '%s\n' "  swiftly-clean --deep --dry-run"
     printf '%s\n' "  swiftly-clean --resolve"
     printf '%s\n' "  swiftly-clean --resolve --force"
     printf '%s\n' "  swiftly-clean --version"
@@ -69,6 +74,7 @@ print_help() {
     printf '%s\n' "Options:"
     printf '%s\n' "  --force      Skip confirmation prompts"
     printf '%s\n' "  --deep       Remove full SwiftPM user state instead of only security fingerprints"
+    printf '%s\n' "  --dry-run    Show what would be removed without deleting anything"
     printf '%s\n' "  --resolve    Find Package.resolved files and offer to delete them"
     printf '%s\n' "  --version    Print the current version"
     printf '%s\n' "  --help, -h   Show help"
@@ -90,12 +96,15 @@ for arg in "$@"; do
         --deep)
             DEEP=true
             ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
         --resolve)
             RESOLVE_PACKAGES=true
             ;;
         *)
             echo -e "${RED}✗ Unknown option:${RESET} $arg"
-            echo -e "${DIM}Usage: swiftly-clean [--force] [--deep] [--resolve] [--version] [--help]${RESET}"
+            echo -e "${DIM}Usage: swiftly-clean [--force] [--deep] [--dry-run] [--resolve] [--version] [--help]${RESET}"
             exit 1
             ;;
     esac
@@ -170,7 +179,12 @@ safe_rm_resolved() {
 if $RESOLVE_PACKAGES; then
     echo ""
     echo -e "${BOLD}${BLUE}🧹 swiftly-clean${RESET}"
-    echo -e "${DIM}Searching for Package.resolved files under:${RESET} ${DIM}$PWD${RESET}"
+    if $DRY_RUN; then
+        echo -e "${BOLD}${CYAN}Dry run:${RESET} searching for Package.resolved files without deleting anything."
+    else
+        echo -e "${DIM}Searching for Package.resolved files under:${RESET} ${DIM}$PWD${RESET}"
+    fi
+    echo -e "${DIM}Path:${RESET} ${DIM}$PWD${RESET}"
     echo ""
 
     resolved_files=()
@@ -180,6 +194,11 @@ if $RESOLVE_PACKAGES; then
 
     if [ ${#resolved_files[@]} -eq 0 ]; then
         echo -e "  ${DIM}• No Package.resolved files found${RESET}"
+        if $DRY_RUN; then
+            echo ""
+            echo -e "${BOLD}${CYAN}Dry run complete.${RESET}"
+            echo -e "${DIM}No files were deleted.${RESET}"
+        fi
         echo ""
         exit 0
     fi
@@ -190,6 +209,12 @@ if $RESOLVE_PACKAGES; then
         echo -e "  ${YELLOW}[$((i+1))]${RESET} ${DIM}${resolved_files[$i]}${RESET}"
     done
     echo ""
+
+    if $DRY_RUN; then
+        echo -e "${BOLD}${CYAN}Dry run:${RESET} no Package.resolved files were deleted."
+        echo ""
+        exit 0
+    fi
 
     if $FORCE; then
         resolve_action=a
@@ -226,10 +251,18 @@ fi
 
 echo ""
 echo -e "${BOLD}${BLUE}🧹 swiftly-clean${RESET}"
-echo -e "${DIM}Deep-cleans Xcode and SwiftPM build state.${RESET}"
+if $DRY_RUN; then
+    echo -e "${BOLD}${CYAN}Dry run:${RESET} showing what would be removed without deleting anything."
+else
+    echo -e "${DIM}Deep-cleans Xcode and SwiftPM build state.${RESET}"
+fi
 echo ""
 
-echo -e "${BOLD}${YELLOW}This will remove:${RESET}"
+if $DRY_RUN; then
+    echo -e "${BOLD}${CYAN}Would remove:${RESET}"
+else
+    echo -e "${BOLD}${YELLOW}This will remove:${RESET}"
+fi
 echo -e "  ${YELLOW}•${RESET} All Xcode DerivedData         ${DIM}($DERIVED_DATA)${RESET}"
 echo -e "  ${YELLOW}•${RESET} SwiftPM global cache          ${DIM}($SPM_CACHE)${RESET}"
 
@@ -244,6 +277,13 @@ if [ -d "$LOCAL_BUILD" ]; then
 fi
 
 echo ""
+
+if $DRY_RUN; then
+    echo -e "${BOLD}${CYAN}Dry run complete.${RESET}"
+    echo -e "${DIM}No files were deleted.${RESET}"
+    echo ""
+    exit 0
+fi
 
 if ! $FORCE; then
     read -r -p "$(echo -e "${BOLD}Continue?${RESET} [y/N] ")" confirm

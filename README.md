@@ -120,6 +120,20 @@ swiftly-clean --help
 swiftly-clean --version
 ```
 
+### Preview cleanup without deleting anything
+
+```sh
+swiftly-clean --dry-run
+```
+
+For a deep-clean preview:
+
+```sh
+swiftly-clean --deep --dry-run
+```
+
+Dry runs can also be combined with `--force`; they still do not delete anything.
+
 ### Skip confirmation
 
 ```sh
