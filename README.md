@@ -28,6 +28,8 @@ With `--deep`, it additionally removes the full SwiftPM user state:
 
 Use `--deep` only when you want a more aggressive reset.
 
+With `--resolve`, it searches the current directory tree for `Package.resolved` files and offers to delete them interactively. This is useful in hybrid projects or workspaces where multiple `Package.resolved` files cause conflicts, especially when dependencies point to a `branch` rather than an `exact` version.
+
 ## Installation
 
 ### 1. Clone the repository
@@ -40,16 +42,16 @@ cd swiftly-clean
 ### 2. Make the script executable
 
 ```sh
-chmod +x swiftly-clean.sh
+chmod +x swiftly-clean
 ```
 
 ### 3. Move it somewhere on your PATH
 
-To make the command available from anywhere, move it to a directory on your shell `PATH` and rename it to drop the `.sh` extension:
+To make the command available from anywhere, copy it to a directory on your shell `PATH`:
 
 ```sh
 mkdir -p "$HOME/bin"
-mv swiftly-clean.sh "$HOME/bin/swiftly-clean"
+cp swiftly-clean "$HOME/bin/swiftly-clean"
 ```
 
 Then make sure `~/bin` is on your `PATH`.
@@ -91,10 +93,10 @@ You should see something like:
 You can also run:
 
 ```sh
-swiftly-clean --force
+swiftly-clean --help
 ```
 
-to test that the command is found and executes.
+to test that the command is found without deleting anything.
 
 ## Usage
 
@@ -105,6 +107,32 @@ swiftly-clean
 ```
 
 This will ask for confirmation before deleting anything.
+
+### Show help
+
+```sh
+swiftly-clean --help
+```
+
+### Show version
+
+```sh
+swiftly-clean --version
+```
+
+### Preview cleanup without deleting anything
+
+```sh
+swiftly-clean --dry-run
+```
+
+For a deep-clean preview:
+
+```sh
+swiftly-clean --deep --dry-run
+```
+
+Dry runs can also be combined with `--force`; they still do not delete anything.
 
 ### Skip confirmation
 
@@ -122,6 +150,46 @@ swiftly-clean --deep
 
 ```sh
 swiftly-clean --force --deep
+```
+
+### Search and destroy Package.resolved files
+
+```sh
+swiftly-clean --resolve
+```
+
+This scans the current directory tree for all `Package.resolved` files, lists them with their paths, and then asks whether to delete all of them, select individual ones to delete, or skip entirely.
+
+### Search and destroy Package.resolved files without confirmation
+
+```sh
+swiftly-clean --resolve --force
+```
+
+## Manual page
+
+After installation through a package manager, the manual should be available with:
+
+```sh
+man swiftly-clean
+```
+
+The source manual page is included in this repository at:
+
+```sh
+man/swiftly-clean.1
+```
+
+To preview the repository copy before it is installed into your system man path, run:
+
+```sh
+man ./man/swiftly-clean.1
+```
+
+Future Homebrew packaging can install it with:
+
+```ruby
+man1.install "man/swiftly-clean.1"
 ```
 
 ## Recommended workflow
